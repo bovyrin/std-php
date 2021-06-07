@@ -1,7 +1,7 @@
 {
     "name": "sbovyrin/std-php",
-    "description": "Extended PHP std",
-    "keywords": ["std", "fp", "combinators", "compose"],
+    "description": "PHP standard library that we want",
+    "keywords": ["std", "fp", "combinators", "standard library"],
     "type": "library",
     "require": {
         "php": ">=7.4.0"

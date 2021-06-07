@@ -1,6 +1,6 @@
 # PHP standard library that we want
 
-> use sbovyrin/std;
+> Auto-included when used with composer
 
 ## Docs
 
