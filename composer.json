@@ -1,0 +1,20 @@
+{
+    "name": "sbovyrin/std-php",
+    "description": "Extended PHP std",
+    "keywords": ["std", "fp", "combinators", "compose"],
+    "type": "library",
+    "require": {
+        "php": ">=7.4.0"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Sergey Bovyrin",
+            "email": "sbovyrin@gmail.com"
+        }
+    ],
+    "autoload": {
+        "files": ["src/std.php"]
+    },
+    "minimum-stability": "dev"
+}
