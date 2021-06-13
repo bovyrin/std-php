@@ -17,6 +17,13 @@ head([]); // -> throw type error
 head(''); // -> throw type error
 head('hello'); // -> 'h'
 head('h'); // -> 'h'
+
+snd([3,4,5,6]); // -> 4
+snd([3]); // -> throw type error
+snd([]); // -> throw type error
+snd(''); // -> throw type error
+snd('hello'); // -> 'e'
+snd('h'); // -> throw type error
 ```
 
 ### `tail`
@@ -104,7 +111,7 @@ function sum($a, $b) {
     return $a + $b;
 }
 
-fold('sum', 0, [1,2,3,4]); // -> 10
+fold('sum', 0)([1,2,3,4]); // -> 10
 ```
 
 ### `reduce`
@@ -118,7 +125,7 @@ function sum($a, $b) {
     return $a + $b;
 }
 
-reduce('sum', [1,2,3,4]); // -> 10
+reduce('sum')([1,2,3,4]); // -> 10
 ```
 
 ### `filter`
@@ -132,14 +139,7 @@ function isEven($a) {
     return $a % 2 === 0;
 }
 
-filter('isEven', [1,2,3,4]); // -> [2,4]
-
-
-function isEvenKey($a, $b) {
-    return $b % 2 === 0;
-}
-
-filter('isEvenKey', [1,2,3,4]); // -> [1,3]
+filter('isEven')([1,2,3,4]); // -> [2,4]
 ```
 
 ### `map`
@@ -153,7 +153,7 @@ function addTwo($a) {
     return $a + 2;
 }
 
-map('addTwo', [1,2,3,4]); // -> [3,4,5,6]
+map('addTwo')([1,2,3,4]); // -> [3,4,5,6]
 ```
 
 ### `partial`
@@ -163,14 +163,12 @@ Returns partial applied function.
 ```php
 <?php
 
-function double($a) {
-    return $a * 2;
+function sum($a, $b) {
+    return $a + $b;
 }
 
-$doubleArray = partial('map', 'double');
-$doubleArray([1,2,3,4]); // -> [2,4,6,8]
-$doubleArray([6,7,8,9,10]); // -> [12,14,16,18,20]
-
+$addTen = partial('sum', 10);
+map($addTen)([1,2,3,4,5]); // -> [11,12,13,14,15]
 ```
 
 ### `comp`
@@ -196,15 +194,16 @@ $getSecondDoubledElement([1,2,3,4]); // -> 4
 
 ## Undocumented (WIP)
 
-### `assoc`
-### `path`
+### `set`
+### `get`
 ### `slice`
 ### `all`
 ### `any`
 ### `has`
-### `pick`
+### `select`
+### `concat`
 ### `pluck`
-### `getOr`
+### `maybe`
 ### `chunk`
 ### `diff`
 ### `intersect`
@@ -221,3 +220,10 @@ $getSecondDoubledElement([1,2,3,4]); // -> 4
 ### `cnst`
 ### `flip`
 ### `tee`
+### `apply`
+### `applyTo`
+### `spread`
+### `flat`
+### `each`
+### `findKey`
+### `sortBy`
