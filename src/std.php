@@ -157,9 +157,23 @@ if (!function_exists('isObject')) {
     }
 }
 
+
+// Error or invalid value processing
 if (!function_exists('maybe')) {
     function maybe($x): callable {
-        return static fn ($z) => isNone($x) ? $x : $z;
+        return static fn ($z) => isNone($z) ? $x : $z;
+    }
+}
+
+if (!function_exists('either')) {
+    function either(callable $f, callable $g): callable {
+        return static function ($x) use ($f, $g) {
+            try {
+                return $f($x);
+            } catch (\Throwable $e) {
+                return $g($e);
+            }
+        };
     }
 }
 
@@ -211,7 +225,7 @@ if (!function_exists('err')) {
     {
         throw new class($msg, $reason) extends \Error
         {
-            private $reason;
+            public $reason;
             function __construct($m, $r)
             {
                 $err = $this->getTrace()[0];
@@ -459,12 +473,12 @@ if (!function_exists('keys')) {
     }
 }
 
-if (!function_exists('each')) {
-    function each(callable $f): callable
+if (!function_exists('forEvery')) {
+    function forEvery(callable $f): callable
     {
         return static function (array $xs) use ($f) {
             foreach ($xs as $key => $val) {
-                $f($val, $key);
+                $f(isDict($xs) ? [$key, $val] : $val);
             }
         };
     }
@@ -529,21 +543,6 @@ if (!function_exists('all')) {
     }
 }
 
-if (!function_exists('either')) {
-    function either(callable $onLeft, callable $onRight): callable
-    {
-        return static function ($xs) use ($onLeft, $onRight) {
-            if (!(isList($xs) && eq(len($xs), 2)))
-                typeErr(
-                    'either(... {arg}): arg3 expected pair [left, right]',
-                    $xs
-                );
-
-            return empty($xs[0]) ? $onLeft($xs[0]) : $onRight($xs[1]);
-        };
-    }
-}
-
 if (!function_exists('comp')) {
     function comp(...$fs): callable
     {
@@ -556,8 +555,8 @@ if (!function_exists('concat')) {
     {
         switch (true) {
             case all('isString')($xs): return join("", $xs);
-            case all('isDict')($xs):
-            case all('isList')($xs): return array_merge(...$xs);
+            case all(static fn ($x) => isDict($x) || isList($x))($xs):
+                return array_merge(...$xs);
             default:
                 typeErr(
                     'concat({arg}): expected all elements the same type - list/dict or string',
@@ -567,11 +566,46 @@ if (!function_exists('concat')) {
     }
 }
 
+if (!function_exists('append')) {
+    function append($xs, $zs)
+    {
+        switch (true) {
+            case isString($xs) && isString($zs): return $xs . $zs;
+            case isList($xs):
+                $xs[] = $zs;
+                return $xs;
+            case isString($xs) && !isString($zs):
+                typeErr(
+                    'append(... {arg}): arg2 expected string when arg1 is string',
+                    $zs
+                );
+            default:
+                typeErr('append({arg} ...): arg1 expected list or string', $xs);
+        }
+    }
+}
+
+if (!function_exists('merge')) {
+    function merge(...$xs)
+    {
+        switch (true) {
+            case all('isDict')($xs):
+            case all('isList')($xs): return array_merge_recursive(...$xs);
+            default:
+            typeErr(
+                'merge({arg}): expected homogeneous lists or dicts',
+                $xs
+            );
+        }
+    }
+}
+
 if (!function_exists('map')) {
     function map(callable $f): callable
     {
         return static function (...$xs) use ($f): array {
             switch (true) {
+                case all('isDict')($xs): return array_map($f, ...$xs);
                 case all('isList')($xs):
                     $min = min(array_map('count', $xs));
 
@@ -584,7 +618,11 @@ if (!function_exists('map')) {
                         },
                         []
                     )(range(0, $min - 1));
-                default: typeErr("map({arg}): expected homogeneous list", $xs);
+                default:
+                    typeErr(
+                        "map({arg}): expected homogeneous list or dict",
+                        $xs
+                    );
             }
         };
     }
@@ -746,40 +784,48 @@ if (!function_exists('select')) {
 }
 
 if (!function_exists('diff')) {
-    function diff(array $xs): callable
+    function diff(...$xs): array
     {
-        return static function (array $zs) use ($xs): array {
-            switch (true) {
-                case isList($xs) && isList($zs):
-                    return array_diff($xs, $zs);
-                case isDict($xs) && isDict($zs):
-                    return array_diff_assoc($xs, $zs);
-                default:
-                    typeErr(
-                        'diff(... {arg}): arg2 must be the same type as arg1',
-                        $zs
-                    );
-            }
-        };
+        switch (true) {
+            case all('isList')($xs):
+                return partial('array_udiff', ...$xs)('eq');
+            case all('isDict')($xs):
+                return partial('array_udiff_assoc', ...$xs)('eq');
+            default: typeErr('diff({arg}): args must be homogeneous', $xs);
+        }
     }
 }
 
 if (!function_exists('intersect')) {
-    function intersect(array $xs): callable
+    function intersect(...$xs): array
     {
-        return static function (array $zs) use ($xs): array {
-            switch (true) {
-            case isList($xs) && isList($zs):
-                return array_intersect($xs, $zs);
-            case isDict($xs) && isDict($zs):
-                return array_intersect_assoc($xs, $zs);
-            default:
-                typeErr(
-                    'intersect(... {arg}): arg2 must be the same type as arg1',
-                    $zs
-                );
-            }
-        };
+        switch (true) {
+            case all('isList')($xs):
+                return partial('array_uintersect', ...$xs)('eq');
+            case all('isDict')($xs):
+                return partial('array_uintersect_assoc', ...$xs)('eq');
+            default: typeErr('intersect({arg}): args must be homogeneous', $xs);
+        }
     }
 }
 
+// TODO: improve
+if (!function_exists('applyByKeys')) {
+    function applyByKeys(array $fns, array $dict): array
+    {
+        if (!isDict($fns))
+            typeErr('applyByKeys({arg} ...): arg1 must be dict', $fns);
+
+        if (!isDict($dict))
+            typeErr('applyByKeys(... {arg}): arg2 must be dict', $dict);
+
+        $v = intersect($fns, $dict);
+        return map(
+            static fn ($k, callable $f) => apply($f, get($k)($dict))
+        )(keys($v), vals($v));
+    }
+}
+
+// TODO: dict2Pair
+// TODO: pair2Str
+// TODO: rename
